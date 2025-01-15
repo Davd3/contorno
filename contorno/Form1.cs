@@ -11,12 +11,7 @@ namespace contorno
             InitializeComponent();
         }
 
-        private void Form1_Load(object sender, EventArgs e)
-        {
 
-        }
-        private string imagePath;
-        private int size;
         private void panel1_DragEnter(object sender, DragEventArgs e)
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -117,11 +112,6 @@ namespace contorno
                 panel1.AllowDrop = true;
                 button1.Enabled = true;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Errore: " + ex.Message);
-            }
-        }
 
         private Bitmap ProcessBitmapWithProgress(Bitmap bitmap)
         {
