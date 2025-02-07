@@ -1,18 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
 using Emgu.CV;
 using Emgu.CV.CvEnum;
 using Emgu.CV.Structure;
 using Emgu.CV.Util;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
 using contorno;
 
 namespace contorno {
@@ -115,8 +106,6 @@ namespace contorno {
 
                                     // Mostra l'angolo di rotazione tra i due rettangoli
                                     Console.WriteLine($"Angolo di rotazione tra il modello e il test: {rotationAngle}°");
-
-                                    // Aggiungi i dati del contorno alla lista
 
                                     ContourData newContourData = new ContourData
                                     {
