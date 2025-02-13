@@ -36,8 +36,8 @@
             modelImageFeedback = new Label();
             testImageFeedback = new Label();
             folderBrowserDialog1 = new FolderBrowserDialog();
-            centroText = new Label();
-            angoloText = new Label();
+            nome_operatore_label = new Label();
+            nome_operatore_box = new TextBox();
             SuspendLayout();
             // 
             // label1
@@ -117,31 +117,30 @@
             testImageFeedback.TabIndex = 15;
             testImageFeedback.Text = "Nessuna immagine caricata";
             // 
-            // centroText
+            // nome_operatore_label
             // 
-            centroText.AutoSize = true;
-            centroText.Location = new Point(12, 242);
-            centroText.Name = "centroText";
-            centroText.Size = new Size(159, 20);
-            centroText.TabIndex = 16;
-            centroText.Text = "Coordinate del Centro:";
+            nome_operatore_label.AutoSize = true;
+            nome_operatore_label.Location = new Point(12, 242);
+            nome_operatore_label.Name = "nome_operatore_label";
+            nome_operatore_label.Size = new Size(123, 20);
+            nome_operatore_label.TabIndex = 16;
+            nome_operatore_label.Text = "Nome operatore:";
             // 
-            // angoloText
+            // nome_operatore_box
             // 
-            angoloText.AutoSize = true;
-            angoloText.Location = new Point(12, 290);
-            angoloText.Name = "angoloText";
-            angoloText.Size = new Size(149, 20);
-            angoloText.TabIndex = 17;
-            angoloText.Text = "Angolo di rotazione: ";
+            nome_operatore_box.Location = new Point(12, 274);
+            nome_operatore_box.Name = "nome_operatore_box";
+            nome_operatore_box.PlaceholderText = "Nome operatore";
+            nome_operatore_box.Size = new Size(125, 27);
+            nome_operatore_box.TabIndex = 17;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(580, 322);
-            Controls.Add(angoloText);
-            Controls.Add(centroText);
+            Controls.Add(nome_operatore_box);
+            Controls.Add(nome_operatore_label);
             Controls.Add(testImageFeedback);
             Controls.Add(modelImageFeedback);
             Controls.Add(panel2);
@@ -167,7 +166,7 @@
         private Label modelImageFeedback;
         private Label testImageFeedback;
         private FolderBrowserDialog folderBrowserDialog1;
-        public Label centroText;
-        public Label angoloText;
+        public Label nome_operatore_label;
+        public TextBox nome_operatore_box;
     }
 }

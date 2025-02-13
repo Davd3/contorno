@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Drawing.Imaging;
 using System.Security.Cryptography.X509Certificates;
 using System.Windows.Forms;
+using contorno;
 
 namespace contorno
 {
@@ -87,17 +88,28 @@ namespace contorno
 
         private async void button1_Click(object sender, EventArgs e)
         {
-            using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
+
+            if (string.IsNullOrWhiteSpace(nome_operatore_box.Text))
             {
-                // Directory di default
-                folderDialog.SelectedPath = @"C:\";
+                MessageBox.Show("Inserire nome operatore.");
+            }
 
-
-                if (folderDialog.ShowDialog() == DialogResult.OK)
+            else
+            {
+                using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
                 {
-                    selectedPath = folderDialog.SelectedPath;
+                    // Directory di default
+                    folderDialog.SelectedPath = @"C:\";
+
+
+                    if (folderDialog.ShowDialog() == DialogResult.OK)
+                    {
+                        selectedPath = folderDialog.SelectedPath;
+
+                    }
 
                 }
+                Metodi.Avvio(modelPath, testPath, selectedPath, nome_operatore_box.Text, this);
             }
         }
     }
