@@ -99,7 +99,6 @@ namespace contorno
 
                 }
             }
-            Metodi.Avvio(modelPath, testPath, selectedPath, this);
         }
     }
 }
