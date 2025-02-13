@@ -14,13 +14,10 @@ namespace contorno
     {
         public static bool IsValidExtension(string filePath)
         {
-            // Elenco delle estensioni accettate
             string[] validExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff" };
 
-            // Ottieni l'estensione del file
             string extension = Path.GetExtension(filePath).ToLower();
-
-            // Verifica se l'estensione è tra quelle valide
+            
             return validExtensions.Contains(extension);
         }
         public static void Avvio(string modelFilePath, string testFilePath, string savePath, string nome_operatore, Form1 form)
@@ -74,7 +71,7 @@ namespace contorno
                 {
                     var contour = testContours[i];
                     double area = CvInvoke.ContourArea(contour);
-                    if (area > 50) // Ignora contorni troppo piccoli
+                    if (area > 50)
                     {
                         var moments = CvInvoke.Moments(contour);
                         if (moments.M00 != 0)
