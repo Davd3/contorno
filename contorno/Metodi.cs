@@ -142,9 +142,7 @@ namespace contorno
                         }
                     }
                 }
-
                 CreateTestDirectory(savePath, modelFilePath, testFilePath, modelImg, testImg, contourDataList);
-
             }
             catch (Exception ex)
             {
