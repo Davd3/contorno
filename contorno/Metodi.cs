@@ -112,11 +112,7 @@ namespace contorno
                                     if (modelRotatedRect.Size.Width < modelRotatedRect.Size.Height)
                                         modelAngle += 90;
 
-                                    double rotationAngle = testAngle - modelAngle;
-                                    if (rotationAngle > 180) rotationAngle -= 360;
-                                    if (rotationAngle < -180) rotationAngle += 360;
                                     string dataTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-
                                     ContourData newContourData = new ContourData
                                     {
                                         NomeOperatore= nome_operatore,
@@ -150,7 +146,6 @@ namespace contorno
             }
             form.nome_operatore_box.Clear();
         }
-
 
 
 
