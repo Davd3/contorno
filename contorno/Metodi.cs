@@ -24,7 +24,7 @@ namespace contorno
         {
             try
             {
-                // Lettura delle immagini
+                // Caricamento delle immagini
                 Mat modelImg = CvInvoke.Imread(modelFilePath, ImreadModes.Color);
                 Mat testImg = CvInvoke.Imread(testFilePath, ImreadModes.Color);
 
@@ -34,30 +34,60 @@ namespace contorno
                     return;
                 }
 
+                // Crea una maschera nera delle stesse dimensioni dell'immagine
+                Mat mask = new Mat(testImg.Size, DepthType.Cv8U, 1);
+                mask.SetTo(new MCvScalar(0));
+
+                // Calcola la larghezza della ROI (escludendo il 20% destro e sinistro)
+                int roiX = (int)(testImg.Width * 0.15);    // Inizio al 20% della larghezza
+                int roiWidth = (int)(testImg.Width * 0.7);  // Larghezza pari al 60% dell'immagine
+                int roiHeight = testImg.Height;
+                Rectangle roi = new Rectangle(roiX, 0, roiWidth, testImg.Height);
+
+                // Crea le immagini ritagliate
+                CvInvoke.Rectangle(mask, roi, new MCvScalar(255), -1);
+
                 // Conversione in scala di grigi
                 Mat modelGray = new Mat();
                 Mat testGray = new Mat();
                 CvInvoke.CvtColor(modelImg, modelGray, ColorConversion.Bgr2Gray);
                 CvInvoke.CvtColor(testImg, testGray, ColorConversion.Bgr2Gray);
 
-                // Applicazione del filtro GaussianBlur + Threshold per migliorare il rilevamento dei contorni
-                CvInvoke.GaussianBlur(testGray, testGray, new Size(5, 5), 1.5);
-                CvInvoke.Threshold(testGray, testGray, 100, 255, ThresholdType.Binary);
-                CvInvoke.GaussianBlur(modelGray, modelGray, new Size(5, 5), 1.5);
-                CvInvoke.Threshold(modelGray, modelGray, 100, 255, ThresholdType.Binary);
+                // Regola contrasto (alpha) e luminosità (beta)
+                double alpha = 3;  // Esempio: 1.2 aumenta contrasto del 20%
+                int beta = -100;       // Esempio: 30 aumenta luminosità di 30 unità
+                CvInvoke.ConvertScaleAbs(modelGray, modelGray, alpha, beta);
+                CvInvoke.ConvertScaleAbs(testGray, testGray, alpha, beta);
 
-                // Applicazione del filtro Canny
-                Mat modelEdges = new Mat();
-                Mat testEdges = new Mat();
-                CvInvoke.Canny(modelGray, modelEdges, 100, 200);
-                CvInvoke.Canny(testGray, testEdges, 100, 200);
+                // Applica la maschera all'immagine in scala di grigi
+                Mat testGrayMasked = new Mat();
+                Mat modelGrayMasked = new Mat();
+                CvInvoke.BitwiseAnd(modelGray, mask, modelGrayMasked);
+                CvInvoke.BitwiseAnd(testGray, mask, testGrayMasked);
 
-                // Ricerca dei contorni
-                Mat hierarchy = new Mat();
+                // Applicazione del filtro GaussianBlur per ridurre il rumore
+                CvInvoke.GaussianBlur(modelGrayMasked, modelGrayMasked, new Size(5, 5), 1);
+                CvInvoke.GaussianBlur(testGrayMasked, testGrayMasked, new Size(5, 5), 1);
+
+                // Thresholding con metodo Otsu per ottenere immagini binarie
+                CvInvoke.Threshold(modelGrayMasked, modelGrayMasked, 0, 255, ThresholdType.Binary | ThresholdType.Otsu);
+                CvInvoke.Threshold(testGrayMasked, testGrayMasked, 0, 255, ThresholdType.Binary | ThresholdType.Otsu);
+
+                // Operazioni morfologiche per eliminare piccoli rumori (closing)
+                Mat kernel = CvInvoke.GetStructuringElement(ElementShape.Rectangle, new Size(5, 5), new Point(-1, -1));
+                CvInvoke.MorphologyEx(modelGrayMasked, modelGrayMasked, MorphOp.Close, kernel, new Point(-1, -1), 1, BorderType.Default, new MCvScalar());
+                CvInvoke.MorphologyEx(testGrayMasked, testGrayMasked, MorphOp.Close, kernel, new Point(-1, -1), 1, BorderType.Default, new MCvScalar());
+
+                //inverte i colori da bianco a nero
+                CvInvoke.BitwiseNot(modelGrayMasked, modelGrayMasked);
+                CvInvoke.BitwiseNot(testGrayMasked, testGrayMasked);
+
+                // Ricerca dei contorni (usando il retrieval di contorni esterni)
                 VectorOfVectorOfPoint modelContours = new VectorOfVectorOfPoint();
                 VectorOfVectorOfPoint testContours = new VectorOfVectorOfPoint();
-                CvInvoke.FindContours(modelEdges, modelContours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
-                CvInvoke.FindContours(testEdges, testContours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+                Mat hierarchy = new Mat();
+                CvInvoke.FindContours(modelGrayMasked, modelContours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
+                CvInvoke.FindContours(testGrayMasked, testContours, hierarchy, RetrType.External, ChainApproxMethod.ChainApproxSimple);
 
                 if (modelContours.Size == 0 || testContours.Size == 0)
                 {
@@ -65,84 +95,130 @@ namespace contorno
                     return;
                 }
 
-                List<ContourData> contourDataList = new List<ContourData>();
+                // Selezione del contorno più grande per il modello
+                int modelLargestIdx = -1;
+                double modelMaxArea = 0;
+                for (int i = 0; i < modelContours.Size; i++)
+                {
+                    double area = CvInvoke.ContourArea(modelContours[i]);
+                    if (area > modelMaxArea && area < (roiWidth * roiHeight * 0.8))
+                    {
+                        modelMaxArea = area;
+                        modelLargestIdx = i;
+                    }
+                }
 
+                // Selezione del contorno più grande per l'immagine di test
+                int testLargestIdx = -1;
+                double testMaxArea = 0;
                 for (int i = 0; i < testContours.Size; i++)
                 {
-                    var contour = testContours[i];
-                    double area = CvInvoke.ContourArea(contour);
-                    if (area > 50)
+                    double area = CvInvoke.ContourArea(testContours[i]);
+                    if (area > testMaxArea && area < (roiWidth * roiHeight * 0.8))
                     {
-                        var moments = CvInvoke.Moments(contour);
-                        if (moments.M00 != 0)
-                        {
-                            double cX = moments.M10 / moments.M00;
-                            double cY = moments.M01 / moments.M00;
-                            CvInvoke.Circle(testImg, new Point((int)cX, (int)cY), 5, new MCvScalar(0, 0, 255), -1);
+                        testMaxArea = area;
+                        testLargestIdx = i;
+                    }
+                }
 
-                            RotatedRect testRotatedRect = CvInvoke.MinAreaRect(contour);
-                            PointF[] testBox = CvInvoke.BoxPoints(testRotatedRect);
-                            for (int j = 0; j < 4; j++)
-                            {
-                                CvInvoke.Line(testImg, new Point((int)testBox[j].X, (int)testBox[j].Y),
-                                            new Point((int)testBox[(j + 1) % 4].X, (int)testBox[(j + 1) % 4].Y),
-                                            new MCvScalar(255, 0, 0), 2);
-                            }
+                if (modelLargestIdx == -1 || testLargestIdx == -1)
+                {
+                    MessageBox.Show("Errore: Nessun contorno valido trovato.");
+                    return;
+                }
 
-                            double testAngle = testRotatedRect.Angle;
-                            if (testRotatedRect.Size.Width < testRotatedRect.Size.Height)
-                                testAngle += 90;
+                // Estrazione delle proprietà del contorno: orientamento e centro
+                RotatedRect modelRect = CvInvoke.MinAreaRect(modelContours[modelLargestIdx]);
+                RotatedRect testRect = CvInvoke.MinAreaRect(testContours[testLargestIdx]);
 
-                            for (int j = 0; j < modelContours.Size; j++)
-                            {
-                                var modelContour = modelContours[j];
-                                double modelArea = CvInvoke.ContourArea(modelContour);
-                                if (modelArea > 50)
-                                {
-                                    RotatedRect modelRotatedRect = CvInvoke.MinAreaRect(modelContour);
-                                    PointF[] modelBox = CvInvoke.BoxPoints(modelRotatedRect);
-                                    for (int k = 0; k < 4; k++)
-                                    {
-                                        CvInvoke.Line(modelImg, new Point((int)modelBox[k].X, (int)modelBox[k].Y),
-                                                    new Point((int)modelBox[(k + 1) % 4].X, (int)modelBox[(k + 1) % 4].Y),
-                                                    new MCvScalar(255, 0, 0), 2);
-                                    }
+                // Calcolo del centro tramite i momenti (per il test)
+                Moments momentsTest = CvInvoke.Moments(testContours[testLargestIdx]);
+                double cX = momentsTest.M10 / momentsTest.M00;
+                double cY = momentsTest.M01 / momentsTest.M00;
 
-                                    double modelAngle = modelRotatedRect.Angle;
-                                    if (modelRotatedRect.Size.Width < modelRotatedRect.Size.Height)
-                                        modelAngle += 90;
+                // Calcolo angoli con correzione
+                double modelAngle = modelRect.Angle;
+                if (modelRect.Size.Width < modelRect.Size.Height) modelAngle += 90;
 
-                                    string dataTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
-                                    ContourData newContourData = new ContourData
-                                    {
-                                        NomeOperatore= nome_operatore,
-                                        DataTime = dataTime,
-                                        CentroidX = cX,
-                                        CentroidY = cY,
-                                        RotationAngle = rotationAngle
-                                    };
+                double testAngle = testRect.Angle;
+                if (testRect.Size.Width < testRect.Size.Height) testAngle += 90;
 
-                                    // Verifica se il dato esiste già
-                                    bool isDuplicate = contourDataList.Any(existingData =>
-                                        Math.Abs(existingData.CentroidX - newContourData.CentroidX) < 1e-5 &&
-                                        Math.Abs(existingData.CentroidY - newContourData.CentroidY) < 1e-5 &&
-                                        Math.Abs(existingData.RotationAngle - newContourData.RotationAngle) < 1e-5);
+                // Normalizzazione dell'angolo
+                double rotationDiff = testAngle - modelAngle;
+                if (rotationDiff > 180) rotationDiff -= 360;
+                else if (rotationDiff < -180) rotationDiff += 360;
 
-                                    if (!isDuplicate)
-                                    {
-                                        contourDataList.Add(newContourData);
-                                        InsertDataIntoDatabase(nome_operatore, dataTime, cX, cY, rotationAngle);
-                                    }
-                                }
-                            }
-                        }
+
+                // Calcolo dello spostamento: differenza dei centri
+                Moments momentsModel = CvInvoke.Moments(modelContours[modelLargestIdx]);
+                double modelCX = momentsModel.M10 / momentsModel.M00;
+                double modelCY = momentsModel.M01 / momentsModel.M00;
+                double displacementX = cX - modelCX;
+                double displacementY = cY - modelCY;
+
+                // Disegno dei contorni e delle bounding box per visualizzare i risultati
+                PointF[] modelBox = CvInvoke.BoxPoints(modelRect);
+                for (int i = 0; i < 4; i++)
+                {
+                    CvInvoke.Line(modelImg,
+                        new Point((int)modelBox[i].X, (int)modelBox[i].Y),
+                        new Point((int)modelBox[(i + 1) % 4].X, (int)modelBox[(i + 1) % 4].Y),
+                        new MCvScalar(255, 0, 0), 2);
+                }
+                PointF[] testBox = CvInvoke.BoxPoints(testRect);
+                for (int i = 0; i < 4; i++)
+                {
+                    CvInvoke.Line(testImg,
+                        new Point((int)testBox[i].X, (int)testBox[i].Y),
+                        new Point((int)testBox[(i + 1) % 4].X, (int)testBox[(i + 1) % 4].Y),
+                        new MCvScalar(0, 255, 0), 2);
+                }
+                // Disegna il centro dell'immagine di test
+                CvInvoke.Circle(testImg, new Point((int)cX, (int)cY), 5, new MCvScalar(0, 0, 255), -1);
+
+
+
+
+
+
+
+               
+                List<ContourData> contourDataList = new List<ContourData>();
+
+
+                string dataTime = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss");
+                ContourData newContourData = new ContourData
+                {
+                    NomeOperatore = nome_operatore,
+                    DataTime = dataTime,
+                    CentroidX = cX,
+                    CentroidY = cY,
+                    RotationAngle = rotationDiff
+                };
+
+                // Verifica se il dato esiste già
+                bool isDuplicate = contourDataList.Any(existingData =>
+                    Math.Abs(existingData.CentroidX - newContourData.CentroidX) < 1e-5 &&
+                    Math.Abs(existingData.CentroidY - newContourData.CentroidY) < 1e-5 &&
+                    Math.Abs(existingData.RotationAngle - newContourData.RotationAngle) < 1e-5);
+
+                if (!isDuplicate)
+                {
+                    contourDataList.Add(newContourData);
+                    try
+                    {
+                        //InsertDataIntoDatabase(nome_operatore, dataTime, cX, cY, rotationDiff);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Errore: " + ex);
                     }
                 }
                 CreateTestDirectory(savePath, modelFilePath, testFilePath, modelImg, testImg, contourDataList);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Errore: {ex}");
+                MessageBox.Show($"Errore: {ex.Message}");
             }
             form.nome_operatore_box.Clear();
         }
